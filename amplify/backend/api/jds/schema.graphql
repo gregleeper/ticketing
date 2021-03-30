@@ -1,0 +1,332 @@
+type CompanyInfo @model @auth(rules: [{ allow: groups, groups: ["admin"] }]) {
+  id: ID!
+  companyName: String!
+  additionalName: String
+  address1: String!
+  address2: String
+  city: String!
+  state: String!
+  zipCode: Int!
+  federalId: String
+  telephoneNum: String
+  faxNum: String
+}
+
+type Commodity @model @auth(rules: [{ allow: groups, groups: ["admin"] }]) {
+  id: ID!
+  name: String!
+  calculateCode: Int!
+  billingCode: Int!
+  poundsPerBushel: Int
+  contracts: [Contract]! @connection(fields: ["id"])
+}
+
+type Settlement
+  @model
+  @auth(rules: [{ allow: groups, groups: ["admin"] }])
+  @key(
+    name: "settlementsSorted"
+    fields: ["type", "dueDate"]
+    queryField: "settlementsSorted"
+  )
+  @key(
+    name: "settlementsByContract"
+    fields: ["contractId", "dueDate"]
+    queryField: "settlementsByContract"
+  )
+  @key(
+    name: "settlementsByVendor"
+    fields: ["vendorId", "dueDate"]
+    queryField: "vendorSettlements"
+  ) {
+  id: ID!
+  settlementNumber: String!
+  tickets: [Ticket]! @connection(keyName: "bySettlement", fields: ["id"])
+  vendorId: ID!
+  vendor: Vendor @connection(fields: ["vendorId"])
+  contractId: ID!
+  contract: Contract! @connection(fields: ["contractId"])
+  amountOwed: Float!
+  beginDate: AWSDateTime!
+  endDate: AWSDateTime!
+  type: String!
+  dueDate: AWSDateTime!
+  paymentId: ID
+  isPaid: Boolean!
+}
+
+type Invoice
+  @model
+  @auth(rules: [{ allow: groups, groups: ["admin"] }])
+  @key(
+    name: "invoicesSorted"
+    fields: ["type", "dueDate"]
+    queryField: "invoicesSorted"
+  )
+  @key(
+    name: "invoicesByContract"
+    fields: ["contractId", "dueDate"]
+    queryField: "invoicesByContract"
+  )
+  @key(
+    name: "invoicesByVendor"
+    fields: ["vendorId", "dueDate"]
+    queryField: "vendorInvoices"
+  ) {
+  id: ID!
+  invoiceNumber: String!
+  tickets: [Ticket]! @connection(keyName: "byInvoice", fields: ["id"])
+  vendorId: ID!
+  vendor: Vendor @connection(fields: ["vendorId"])
+  contractId: ID!
+  contract: Contract! @connection(fields: ["contractId"])
+  amountOwed: Float!
+  beginDate: AWSDateTime!
+  endDate: AWSDateTime!
+  type: String!
+  dueDate: AWSDateTime!
+  paymentId: ID
+  isPaid: Boolean!
+}
+
+type Vendor @model @auth(rules: [{ allow: groups, groups: ["admin"] }]) {
+  id: ID!
+  vendorNumber: String!
+  companyReportName: String
+  companyListingName: String!
+  address1: String
+  address2: String
+  city: String
+  state: String
+  zipCode: String
+  telephoneNum: String
+  attention: String
+  prepayment: Boolean!
+  prepaymentAmt: Float!
+}
+
+type Contract
+  @auth(rules: [{ allow: groups, groups: ["admin"] }])
+  @model
+  @key(
+    name: "byStatus"
+    fields: ["contractState", "contractType", "endDate"]
+    queryField: "contractsByStatus"
+  )
+  @key(
+    name: "byVendor"
+    fields: ["vendorId", "endDate"]
+    queryField: "contractsByVendor"
+  )
+  @key(
+    name: "byCommodity"
+    fields: ["commodityId", "endDate"]
+    queryField: "contractsByCommodity"
+  )
+  @key(
+    name: "byContractType"
+    fields: ["contractType", "endDate"]
+    queryField: "contractsByType"
+  ) {
+  id: ID!
+  contractNumber: String!
+  contractType: ContractType!
+  contractState: ContractState!
+  vendorId: ID!
+  commodityId: ID!
+  contractTo: Vendor! @connection(fields: ["vendorId"])
+  quantity: Float!
+  contractPrice: Float!
+  salePrice: Float
+  terms: String
+  weights: String
+  basis: String
+  remarks: String
+  beginDate: AWSDateTime!
+  endDate: AWSDateTime!
+  dateSigned: AWSDateTime
+  purchasedFrom: String
+  tickets: [Ticket] @connection(keyName: "byContract", fields: ["id"])
+  payments: [Payment] @connection(keyName: "byContract", fields: ["id"])
+
+  soldTo: String
+  commodity: Commodity! @connection(fields: ["commodityId"])
+}
+
+type Payment
+  @model
+  @auth(rules: [{ allow: groups, groups: ["admin"] }])
+  @key(name: "byContract", fields: ["contractId", "date"])
+  @key(
+    name: "paymentsByContract"
+    fields: ["contractId", "date"]
+    queryField: "paymentsByContract"
+  )
+  @key(
+    name: "paymentsSorted"
+    fields: ["type", "date"]
+    queryField: "paymentsSorted"
+  ) {
+  id: ID!
+  type: String!
+  tFileNumber: String
+  contractId: ID!
+  contract: Contract! @connection(fields: ["contractId"])
+  tickets: [Ticket] @connection(keyName: "byPayment", fields: ["id"])
+  checkNumber: String!
+  date: AWSDateTime!
+  amount: Float!
+  totalPounds: Float
+  invoiceId: ID
+  settlementId: ID
+  tonsCredit: Float
+  overage: Float
+  underage: Float
+  paymentType: PaymentType
+}
+
+enum PaymentType {
+  CHECKS
+  CASH
+  CREDITCARD
+  EFT
+  WIRE
+}
+
+type Ticket
+  @auth(rules: [{ allow: groups, groups: ["admin"] }])
+  @model
+  @key(name: "bySettlement", fields: ["settlementId", "ticketNumber"])
+  @key(name: "byInvoice", fields: ["invoiceId", "ticketNumber"])
+  @key(name: "byContract", fields: ["contractId", "ticketNumber"])
+  @key(name: "byPayment", fields: ["paymentId", "ticketNumber"])
+  @key(
+    name: "ticketsByContractByTicketDate"
+    fields: ["contractId", "ticketDate"]
+    queryField: "ticketsByContract"
+  )
+  @key(
+    name: "ticketsByContractId"
+    fields: ["contractId", "ticketNumber"]
+    queryField: "ticketsByContractId"
+  )
+  @key(
+    name: "ticketsByDate"
+    fields: ["type", "ticketDate"]
+    queryField: "ticketsByDate"
+  )
+  @key(
+    name: "ticketsByCorrespondingContract"
+    fields: ["correspondingContractId", "ticketDate"]
+  ) {
+  id: ID!
+  contractId: ID!
+  invoiceId: ID
+  settlementId: ID
+  paymentId: ID
+  correspondingContractId: ID!
+  type: String!
+  contract: Contract! @connection(fields: ["contractId"])
+  corresondingContract: Contract!
+    @connection(fields: ["correspondingContractId"])
+  ticketDate: AWSDateTime!
+  fieldNum: String
+  baleCount: Float
+  ticketNumber: String
+  ladingNumber: String
+  driver: String
+  truckNumber: String
+  grossWeight: Float
+  tareWeight: Float
+  netWeight: Float
+  netTons: Float
+}
+
+enum ContractType {
+  SALE
+  PURCHASE
+}
+
+enum ContractState {
+  ACTIVE
+  CLOSED
+}
+
+input CreateVendorInput {
+  id: ID
+  vendorNumber: String!
+  companyReportName: String!
+  companyListingName: String!
+  address1: String
+  address2: String
+  city: String
+  state: String
+  zipCode: String
+  telephoneNum: String
+  attention: String
+  prepayment: Boolean!
+  prepaymentAmt: Float!
+}
+
+type Mutation {
+  batchAddVendors(vendors: [CreateVendorInput]): [Vendor]
+  batchAddContracts(contracts: [CreateContractInput]): [Contract]
+  batchAddTickets(tickets: [CreateTicketInput]): [Ticket]
+  batchAddPayments(payments: [CreatePaymentInput]): [Payment]
+}
+
+input CreateContractInput {
+  id: ID
+  contractNumber: String!
+  contractType: ContractType!
+  contractState: ContractState!
+  vendorId: ID!
+  commodityId: ID!
+  quantity: Float!
+  contractPrice: Float!
+  salePrice: Float
+  terms: String
+  weights: String
+  basis: String
+  remarks: String
+  beginDate: AWSDateTime!
+  endDate: AWSDateTime!
+  dateSigned: AWSDateTime
+  purchasedFrom: String
+  soldTo: String
+}
+
+input CreateTicketInput {
+  id: ID
+  contractId: ID!
+  correspondingContractId: ID!
+  type: String!
+  ticketDate: AWSDateTime!
+  fieldNum: String
+  baleCount: Float
+  ticketNumber: String
+  ladingNumber: String
+  driver: String
+  truckNumber: String
+  grossWeight: Float
+  tareWeight: Float
+  netWeight: Float
+  netTons: Float
+}
+
+input CreatePaymentInput {
+  id: ID
+  type: String!
+  tFileNumber: String
+  contractId: ID!
+  checkNumber: String!
+  date: AWSDateTime!
+  amount: Float!
+  totalPounds: Float
+  tonsCredit: Float
+  settlementId: ID
+  invoiceId: ID
+  paymentType: PaymentType
+  overage: Float
+  underage: Float
+}
