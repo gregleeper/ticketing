@@ -6,20 +6,13 @@ import { listContracts } from "../../src/graphql/queries.ts";
 import Link from "next/link";
 import Table from "../../components/table";
 import moment from "moment";
-import {
-  useQueryCache,
-  useInfiniteQuery,
-  useQuery,
-  queryCache,
-} from "react-query";
+import { useQueryCache, useQuery } from "react-query";
 import { ReactQueryDevtools } from "react-query-devtools";
 
 const AllTickets = () => {
   const cache = useQueryCache();
   const [tickets, setTickets] = useState([]);
-  const [contractFilter, setContractFilter] = useState();
   const [contracts, setContracts] = useState([]);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const { data: contractsData } = useQuery("contracts", async () => {
     const {
@@ -213,13 +206,6 @@ const AllTickets = () => {
               <Link href="/tickets/create">
                 <a className="px-3 py-2 border border-gray-800 shadow hover:bg-gray-800 hover:text-white">
                   Create New
-                </a>
-              </Link>
-            </div>
-            <div>
-              <Link href="/tickets/all">
-                <a className="px-3 py-2 border border-gray-800 shadow hover:bg-gray-800 hover:text-white">
-                  Get All Tickets
                 </a>
               </Link>
             </div>
